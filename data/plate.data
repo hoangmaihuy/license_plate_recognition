@@ -1,0 +1,4 @@
+classes=1
+train=./data/plate_train.txt
+valid=./data/plate_test.txt
+names=./data/plate.names
