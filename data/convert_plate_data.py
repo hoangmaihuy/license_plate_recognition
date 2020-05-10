@@ -9,7 +9,8 @@ def get_plate_data(xml_file):
     ymax = int(anno.find('object').find('bndbox').find('ymax').text)
     img_height = int(anno.find('size').find('height').text)
     img_width = int(anno.find('size').find('width').text)
-    x_center, y_center = (xmax-xmin)/(2*img_width), (ymax-ymin)/(2*img_width)
+    #print(xmin, ymin, xmax, ymax, img_width, img_height)
+    x_center, y_center = (xmax+xmin)/(2*img_width), (ymax+ymin)/(2*img_width)
     width, height = (xmax-xmin)/img_width, (ymax-ymin)/img_height
     return (x_center, y_center, width, height)
 
