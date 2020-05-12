@@ -1,112 +1,125 @@
-from skimage.io import imread
-from skimage.filters import threshold_otsu
-from skimage import measure
-from skimage.measure import regionprops
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import cv2 as cv
-import numpy as np
-import os
-import xml.etree.ElementTree as ET
-from torch.utils.tensorboard import SummaryWriter
+import argparse
 
-train_img_dir = '.\\Plate_dataset\\AC\\train\\jpeg'
-train_xml_dir = '.\\Plate_dataset\\AC\\train\\xml'
-train_pred_dir = '.\\Plate_dataset\\AC\\train\\xml_pred'
-test_img_dir = '.\\Plate_dataset\\AC\\test\\jpeg'
-test_xml_dir = '.\\Plate_dataset\\AC\\test\\xml'
-
-min_height, max_height, min_width, max_width, ratio = 500, 0, 500, 0, 0.0
+from models import *  # set ONNX_EXPORT in models.py
+from utils.datasets import *
+from utils.utils import *
 
 
-def get_plate_data(xml_file):
-	anno = ET.ElementTree(file=xml_file)
-	label = anno.find('object').find('platetext').text
-	xmin = anno.find('object').find('bndbox').find('xmin').text
-	ymin = anno.find('object').find('bndbox').find('ymin').text
-	xmax = anno.find('object').find('bndbox').find('xmax').text
-	ymax = anno.find('object').find('bndbox').find('ymax').text
-	return (label, int(xmin), int(ymin), int(xmax), int(ymax))
+def detect(save_img=False):
+    img_size = opt.img_size
+    out, source, weights, half, save_txt = opt.output, opt.source, opt.weights, opt.half, opt.save_txt
 
+    # Initialize
+    device = torch_utils.select_device()
+    if os.path.exists(out):
+        shutil.rmtree(out)  # delete output folder
+        os.makedirs(out)  # make new output folder
+    else:
+        os.makedirs(out)
 
-def write_plate_data(xml_file, platetext, xmin, ymin, xmax, ymax):
-	data = f'<annotation><object>' \
-	       f'<platetext>{platetext}</platetext>' \
-		   f'<bndbox>'\
-		   f'<xmin>{xmin}</xmin>' \
-		   f'<ymin>{ymin}</ymin>' \
-		   f'<xmax>{xmax}</xmax>' \
-		   f'<ymax>{ymax}</ymax>' \
-		   f'</bndbox>' \
-	       f'</object></annotation>'
-	with open(xml_file, 'w') as f:
-		f.write(data)
+    # Initialize model
+    model = Darknet(opt.cfg, img_size)
 
+    # Load weights
+    model.load_state_dict(torch.load(weights, map_location=device)['model'])
 
-def is_plate_like(width, height):
-	eps = 0.5
-	return min_width <= width <= max_width \
-	       and min_height <= height <= max_height \
-	       and width > height and abs(width/height - ratio) < eps
+    # Eval mode
+    model.to(device).eval()
 
+    # Fuse Conv2d + BatchNorm2d layers
+    # model.fuse()
 
-def plate_localization(img):
-	ret, img_binary = cv.threshold(img, 0, 255, cv.THRESH_OTSU | cv.THRESH_BINARY)
-	img_label = measure.label(img_binary)
-	for region in regionprops(img_label):
-		ymin, xmin, ymax, xmax = region.bbox
-		width, height = xmax-xmin, ymax-ymin
-		if is_plate_like(width, height):
-			return (xmin, ymin, xmax, ymax)
-	return (0, 0, 0, 0)
+    # Half precision
+    half = half and device.type != 'cpu'  # half precision only supported on CUDA
+    if half:
+        model.half()
 
-def character_segmentation():
-	pass
+    # Set Dataloader
+    save_img = True
+    dataset = LoadImages(source, img_size=img_size)
 
+    # Get names and colors
+    names = load_classes(opt.names)
+    colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(names))]
 
-def character_recognition():
-	pass
+    # Run inference
+    t0 = time.time()
+    img = torch.zeros((1, 3, img_size, img_size), device=device)  # init img
+    _ = model(img.half() if half else img.float()) if device.type != 'cpu' else None  # run once
+    for path, img, im0s, vid_cap in dataset:
+        img = torch.from_numpy(img).to(device)
+        img = img.half() if half else img.float()  # uint8 to fp16/32
+        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        if img.ndimension() == 3:
+            img = img.unsqueeze(0)
 
+        # Inference
+        t1 = torch_utils.time_synchronized()
+        pred = model(img, augment=False)[0]
+        t2 = torch_utils.time_synchronized()
 
-def plate_recognition(img):
-	bbox = plate_recognition(img)
+        # to float
+        if half:
+            pred = pred.float()
 
+        # Apply NMS
+        pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, multi_label=False)
 
-def estimate_plate():
-	global min_height, max_height, min_width, max_width, ratio
-	num = 0
-	for fn in os.listdir(train_xml_dir):
-		label, xmin, ymin, xmax, ymax = get_plate_data(os.path.join(train_xml_dir, fn))
-		width, height = xmax-xmin, ymax-ymin
-		min_width, max_width = min(width, min_width), max(width, max_width)
-		min_height, max_height = min(height, min_height), max(height, max_height)
-		ratio += width/height
-		num += 1
-	ratio /= num
-	print("Estimate plate dimension", min_width, max_width, min_height, max_height, ratio)
+        # Process detections
+        for i, det in enumerate(pred):  # detections per image
+            p, s, im0 = path, '', im0s
 
-def train():
-	writer = SummaryWriter('train')
-	estimate_plate()
-	idx = 0
-	for fn in os.listdir(train_img_dir):
-		idx += 1
-		img = cv.imread(os.path.join(train_img_dir, fn), 0)
-		label, xmin, ymin, xmax, ymax = get_plate_data(os.path.join(train_xml_dir, str(idx)+'.xml'))
-		# gt = [xmin, ymin, xmax, ymax]
-		# gt = [int(b) for b in gt]
-		# label_pred = plate_recognition(img)
-		xmin, ymin, xmax, ymax = plate_localization(img)
-		img_patch = cv.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
-		writer.add_image(fn, cv.cvtColor(img, cv.COLOR_BGR2RGB), global_step=0, dataformats='HWC')
-		writer.add_image(fn, cv.cvtColor(img_patch, cv.COLOR_BGR2RGB), global_step=1, dataformats='HWC')
-		write_plate_data(os.path.join(train_pred_dir, str(idx)+'.xml'), label, xmin, ymin, xmax, ymax)
+            save_path = str(Path(out) / Path(p).name)
+            s += '%gx%g ' % img.shape[2:]  # print string
+            if det is not None and len(det):
+                # Rescale boxes from img_size to im0 size
+                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
 
+                # Print results
+                for c in det[:, -1].unique():
+                    n = (det[:, -1] == c).sum()  # detections per class
+                    s += '%g %ss, ' % (n, names[int(c)])  # add to string
 
-def test():
-	pass
+                # Write results
+                for *xyxy, conf, cls in det:
+                    if save_txt:  # Write to file
+                        txt_path = save_path.replace('jpg', 'txt')
+                        with open(txt_path, 'a') as file:
+                            file.write(('%g ' * 4 + '\n') % (*xyxy,))
+
+                    if save_img:  # Add bbox to image
+                        label = '%s %.2f' % (names[int(cls)], conf)
+                        plot_one_box(xyxy, im0, label=label, color=colors[int(cls)])
+
+            # Print time (inference + NMS)
+            print('%sDone. (%.3fs)' % (s, t2 - t1))
+
+            # Save results (image with detections)
+            if save_img:
+                cv2.imwrite(save_path, im0)
+
+    if save_txt or save_img:
+        print('Results saved to %s' % os.getcwd() + os.sep + out)
+        if platform == 'darwin':  # MacOS
+            os.system('open ' + save_path)
+
+    print('Done. (%.3fs)' % (time.time() - t0))
 
 
 if __name__ == '__main__':
-	train()
-	test()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3-tiny-1cls.cfg', help='*.cfg path')
+    parser.add_argument('--names', type=str, default='data/plate.names', help='*.names path')
+    parser.add_argument('--weights', type=str, default='weights/yolov3-tiny-best.pt', help='weights path')
+    parser.add_argument('--source', type=str, default='data/samples', help='source') 
+    parser.add_argument('--output', type=str, default='output', help='output folder') 
+    parser.add_argument('--img-size', type=int, default=416, help='inference size (pixels)')
+    parser.add_argument('--conf-thres', type=float, default=0.3, help='object confidence threshold')
+    parser.add_argument('--iou-thres', type=float, default=0.6, help='IOU threshold for NMS')
+    parser.add_argument('--half', action='store_true', help='half precision FP16 inference')
+    parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
+    opt = parser.parse_args()
+    print(opt)
+
+    with torch.no_grad():
+        detect()

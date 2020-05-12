@@ -4,8 +4,8 @@ import xml.etree.ElementTree as ET
 
 
 if __name__ == '__main__':
-    xml_gt = './Plate_dataset/AC/test/xml'
-    xml_pred = './Plate_dataset/AC/test/xml_pred'
+    xml_gt = './data/plate_data/test/xml'
+    xml_pred = './data/plate_data/test//xml_pred'
     total = 0
     pred_true = 0
     for file in os.listdir(xml_gt):

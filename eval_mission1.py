@@ -39,8 +39,8 @@ def compute_iou(box1, box2, wh=False):
 
 
 if __name__ == '__main__':
-    xml_gt = './Plate_dataset/AC/train/xml'
-    xml_pred = './Plate_dataset/AC/train/xml_pred'
+    xml_gt = './data/plate_data/test/xml'
+    xml_pred = './data/plate_data/test/xml_pred'
     ious = []
     for file in os.listdir(xml_gt):
         anno_gt = ET.ElementTree(file=os.path.join(xml_gt, file))
