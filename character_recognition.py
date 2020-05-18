@@ -11,10 +11,9 @@ import cv2 as cv
 width = 20
 height = 20
 channel = 1
-# prepare data
 best_acc = 0
 
-chars_dir = './data/chars_data/'
+chars_dir = './data/chars_data_from_plate/'
 test_dir = './data/plate_data/test/images'
 output_dir = './data/plate_data/test/output'
 model_path = './model'
@@ -74,7 +73,7 @@ def train(numbers=True, letters=True):
         model_name = 'letter_model.h5'
     model.save(os.path.join(model_path, model_name))
 
-def resize2SquareKeepingAspectRation(img, size, interpolation):
+def resize2Square(img, size, interpolation):
     h, w = img.shape[:2]
     c = None if len(img.shape) < 3 else img.shape[2]
     if h == w: return cv.resize(img, (size, size), interpolation)
@@ -92,7 +91,7 @@ def resize2SquareKeepingAspectRation(img, size, interpolation):
 
 
 def recognize_char(img, pos):
-    img = resize2SquareKeepingAspectRation(img, 20, cv.INTER_AREA)
+    img = resize2Square(img, 20, cv.INTER_AREA)
     image = img.reshape((1, height, width, 1))
     if pos == 2 or pos == 3:
         preds = number_model.predict(image)[0]
@@ -100,11 +99,6 @@ def recognize_char(img, pos):
     else:
         preds = all_model.predict(image)[0]
         num = np.argmax(preds)
-    #chars = range(34)
-    #chars = sorted(chars, key=lambda i: preds[i], reverse=True)
-    #chars = [num_to_char[ch] for ch in chars]
-    #print(chars[:10])
-    #cv.imshow("window " + num_to_char[num], img)
     return num_to_char[num]
 
 
@@ -129,9 +123,9 @@ def get_plate_text():
             print(f'Plate {idx} text is {text}')
 
 if __name__ == '__main__':
-    #train(True, False)
-    #train(False, True)
-    #train(True, True)
+    train(True, False)
+    train(False, True)
+    train(True, True)
     global all_model, letter_model, number_model
     all_model = tf.keras.models.load_model(os.path.join(model_path, 'all_model.h5'))
     letter_model = tf.keras.models.load_model(os.path.join(model_path, 'letter_model.h5'))

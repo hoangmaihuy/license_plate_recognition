@@ -1,13 +1,24 @@
 import cv2 as cv
 import numpy as np
 import os
+import xml.etree.ElementTree as ET
 
 img_dir = './data/plate_data/test/images'
 output_dir = './data/plate_data/test/output'
+xml_gt = './data/plate_data/test/xml'
 
 def get_bbox(idx):
+    # Use predict bbox
+    '''
     with open(os.path.join(output_dir, str(idx)+'.txt'), 'r') as f:
         xmin, ymin, xmax, ymax = map(int, f.readline().split())
+    '''
+    # Use ground truth bbox
+    anno_gt = ET.ElementTree(file=os.path.join(xml_gt, str(idx)+'.xml'))
+    xmin = int(anno_gt.find('object').find('bndbox').find('xmin').text)
+    ymin = int(anno_gt.find('object').find('bndbox').find('ymin').text)
+    xmax = int(anno_gt.find('object').find('bndbox').find('xmax').text)
+    ymax = int(anno_gt.find('object').find('bndbox').find('ymax').text)
     return xmin, ymin, xmax, ymax
 
 def remove_border(img):
