@@ -18,6 +18,9 @@ if __name__ == '__main__':
 
         if label_pred == label_gt:
             pred_true += 1
+        else:
+            print('Plate {} wrong, expected {}, predicted {}'.format(file.replace('.xml', ''), label_gt, label_pred))
+
 
 
     print('车牌预测准确率为{}'.format(pred_true/total))

@@ -20,7 +20,7 @@ model_path = './model'
 num_to_char = os.listdir(chars_dir)
 
 
-def load_data(numbers, letters, batch_size = 128, val_data_limit=50):
+def load_data(numbers, letters, batch_size = 32, val_data_limit=50):
     print("Loading data...")
     images = np.array([]).reshape(0,height,width)
     labels = np.array([])
@@ -62,7 +62,7 @@ def train(numbers=True, letters=True):
     model.compile(optimizer='adam',
                 loss='sparse_categorical_crossentropy',
                 metrics=['accuracy'])
-    model.fit(train_images, train_labels, epochs=10)
+    model.fit(train_images, train_labels, epochs=20)
     test_loss, test_acc = model.evaluate(test_images, test_labels)
     print('test acc =', test_acc)
     if numbers and letters:

@@ -50,7 +50,7 @@ if __name__ == '__main__':
                 continue
             if roi_ratio >= 0.015:
                 div = 1
-                if box_ratio <= 0.88: 
+                if box_ratio <= 0.83: 
                     div = 1
                 elif box_ratio <= 1.4: 
                     div = 2
@@ -65,6 +65,13 @@ if __name__ == '__main__':
                 w = int(w / div)
                 for i in range(div):
                     chars.append((x+i*w, y, w, h))
+        if len(chars) == 7:
+            x, y, w, h = chars[-1]
+            box_ratio = w/h
+            if box_ratio < 0.3:
+                chars.pop(-1) # remove noise in the right
+            else:
+                chars.pop(0) # remove noise in the left
         #print(chars)
         f = open(os.path.join(output_dir, str(idx)+'_chars.txt'), 'w')
         for char in chars:
@@ -74,6 +81,8 @@ if __name__ == '__main__':
         f.close()
         if len(chars) == 6:
             correct += 1
+        else:
+            print('Plate {} segmentation wrong, {} chars'.format(idx, len(chars)))
         cv.imwrite(os.path.join(output_dir, str(idx)+'_masked.jpg'), img)
         cv.imwrite(os.path.join(output_dir, str(idx)+'_grey.jpg'), img_grey)
         cv.imwrite(os.path.join(output_dir, str(idx)+'_binary.jpg'), thresh_inv)
