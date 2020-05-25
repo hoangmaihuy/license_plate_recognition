@@ -16,6 +16,7 @@ def get_plate_data(xml_file):
 
 if __name__ == "__main__":
     dir_names = ['train', 'test']
+    # Convert plate data to darknet dataset format
     for dir_name in dir_names:
         img_dir = os.path.join('./data/plate_data', dir_name, 'images')
         label_dir = os.path.join('./data/plate_data', dir_name, 'labels')

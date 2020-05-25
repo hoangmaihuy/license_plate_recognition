@@ -1,0 +1,19 @@
+Mission 1:
+所有样本的平均iou:0.9246258994479812
+检测正确的样本数目:100
+
+Mission 2:
+Plate 15 wrong, expected T51735, predicted AAAAAA
+Plate 32 wrong, expected HZ6217, predicted UZ62T7
+Plate 51 wrong, expected 6998DB, predicted 96980B
+Plate 54 wrong, expected JZ0942, predicted AAAAAA
+Plate 55 wrong, expected 0329HB, predicted AAAAAA
+Plate 61 wrong, expected 0X6511, predicted XH2511
+Plate 68 wrong, expected 3D0061, predicted AAAAAA
+Plate 8 wrong, expected YY8818, predicted YY881N
+Plate 92 wrong, expected OH1357, predicted 0H1357
+Plate 95 wrong, expected 3A7705, predicted 3A7715
+Plate 96 wrong, expected FL4063, predicted FE4063
+车牌预测准确率为0.89
+对5个字符以上的准确率为0.93
+字符识别准确率为0.94

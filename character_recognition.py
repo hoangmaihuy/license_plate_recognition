@@ -19,7 +19,7 @@ output_dir = './data/plate_data/test/output'
 model_path = './model'
 num_to_char = os.listdir(chars_dir)
 
-
+# Load numbers or letters data 
 def load_data(numbers, letters, batch_size = 32, val_data_limit=50):
     print("Loading data...")
     images = np.array([]).reshape(0,height,width)
@@ -73,6 +73,7 @@ def train(numbers=True, letters=True):
         model_name = 'letter_model.h5'
     model.save(os.path.join(model_path, model_name))
 
+# Resize image to square but keep ratio by padding black pixels
 def resize2Square(img, size, interpolation):
     h, w = img.shape[:2]
     c = None if len(img.shape) < 3 else img.shape[2]
@@ -88,7 +89,6 @@ def resize2Square(img, size, interpolation):
         mask = np.zeros((dif, dif, c), dtype=img.dtype)
         mask[y_pos:y_pos+h, x_pos:x_pos+w, :] = img[:h, :w, :]
     return cv.resize(mask, (size, size), interpolation)
-
 
 def recognize_char(img, pos):
     img = resize2Square(img, 20, cv.INTER_AREA)
@@ -107,6 +107,7 @@ def get_plate_text():
         text = ''
         with open(os.path.join(output_dir, str(idx)+'_chars.txt'), 'r') as f:
             lines = f.readlines()
+        # Segmentation failed
         if (len(lines) != 6):
             text = 'AAAAAA'
         else:

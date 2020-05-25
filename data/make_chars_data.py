@@ -29,6 +29,8 @@ def get_text(idx):
     return label_gt
 
 if __name__ == '__main__':
+    # Apply character_segmentation to train dataset, read platetext in xml file
+    # then create new characters dataset
     for idx in range(1, 582):
         img = cv.imread(os.path.join(output_dir, str(idx)+'_binary.jpg'), cv.IMREAD_GRAYSCALE)
         with open(os.path.join(output_dir, str(idx)+'_chars.txt'), 'r') as f:

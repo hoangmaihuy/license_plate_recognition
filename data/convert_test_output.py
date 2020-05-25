@@ -18,6 +18,8 @@ def write_plate_data(xml_file, platetext, xmin, ymin, xmax, ymax):
         f.write(data)
 
 if __name__ == '__main__':
+    # Read bouding box and platetext from .txt files in output folder
+    # then write to xml file 
     if not os.path.exists(xml_pred_dir):
         os.makedirs(xml_pred_dir)
     for idx in range(1, 101):
